@@ -1,0 +1,102 @@
+library(readxl)
+library(tidyverse)
+
+#MERGING THE TWO DATASETS RELATED TO GDPs; ONE WITH HISTORICAL DATA THE OTHER WITH RECENT GDPs
+
+###########################_______UPLOADING DATASETS___________################################
+df1 = read_xlsx("/Users/Eugenio/Desktop/THESIS/THESIS_R/P_Data_Extract_From_World_Development_Indicators.xlsx")
+df2 = read.csv("/Users/Eugenio/Desktop/THESIS/THESIS_R/Countries GDP 1960-2020.csv")
+
+###########################___MERGING THEM TOGETHER______################################
+df1_long <- df1 %>%
+  # Clean column names by removing [YR...] brackets
+  rename_with(~ gsub(" \\[YR.*\\]", "", .x)) %>%
+  # Convert to long format
+  pivot_longer(
+    cols = matches("^19|^20"),  # Select columns starting with 19 or 20
+    names_to = "Year",
+    values_to = "GDP"
+  ) %>%
+  mutate(
+    Year = as.numeric(Year),
+    `Country Code` = as.character(`Country Code`)
+  ) %>%
+  filter(!is.na(GDP))  # Remove NA values
+
+df2_long <- df2 %>%
+  # Convert to long format - keep Country and Country Code, pivot all X-prefixed columns
+  pivot_longer(
+    cols = starts_with("X"),  # Select all columns starting with X
+    names_to = "Year",
+    values_to = "GDP"
+  ) %>%
+  mutate(
+    # Remove the "X" prefix and convert to numeric year
+    Year = as.numeric(gsub("^X", "", Year)),
+    `Country Code` = as.character(`Country.Code`),
+    # If your df2 has different column names, adjust these:
+    `Country Name` = as.character(Country.Name)  # Adjust if column name differs
+  ) %>%
+  filter(!is.na(GDP))  # Remove NA values
+
+df2_long <- df2_long %>%
+  select(-matches("\\.")) #removing the columns in excess
+
+###########################___CREATE NEW DATASET______################################
+
+merged_join <- full_join(
+  df1_long %>% select(`Country Code`, `Country Name`, Year, GDP),
+  df2_long %>% select(`Country Code`, `Country Name`, Year, GDP),
+  by = c("Country Code", "Year"),
+  suffix = c("_WB", "_KAGGLE")
+)
+
+###########################_______CHECKING THINGS______################################
+country_codes_df1 <- df1_long %>%
+  distinct(`Country Code`, `Country Name`) %>%
+  mutate(Source = "WorldBank")
+
+country_codes_df2 <- df2_long %>%
+  distinct(`Country Code`, `Country Name`) %>%
+  mutate(Source = "Kaggle")
+
+
+#CHECK IF THE SAME COUNTRY CODE HAS TWO DIFFERENT COUNTRIES
+
+name_mismatches <- full_join(
+  country_codes_df1 %>% select(-Source),
+  country_codes_df2 %>% select(-Source),
+  by = "Country Code",
+  suffix = c("_WB", "_KAGGLE")
+) %>%
+  filter(!is.na(`Country Name_WB`) & !is.na(`Country Name_KAGGLE`)) %>%
+  filter(`Country Name_WB` != `Country Name_KAGGLE`)
+
+if (nrow(name_mismatches) > 0) {
+  cat("Country codes with different names:\n")
+  print(name_mismatches)
+} else {
+  cat("All matching country codes have the same names\n")
+}
+
+
+#  Check for same name but different codes 
+
+
+code_mismatches <- full_join(
+  country_codes_df1 %>% select(-Source),
+  country_codes_df2 %>% select(-Source),
+  by = "Country Name",
+  suffix = c("_WB", "_KAGGLE")
+) %>%
+  filter(!is.na(`Country Code_WB`) & !is.na(`Country Code_KAGGLE`)) %>%
+  filter(`Country Code_WB` != `Country Code_KAGGLE`)
+
+if (nrow(code_mismatches) > 0) {
+  cat("WARNING: Same country name but different codes:\n")
+  print(code_mismatches)
+} else {
+  cat("All matching country names have the same codes\n")
+}
+
+write.csv(merged_join, "merged_gdp_data_historical_recent.csv", row.names = FALSE)
