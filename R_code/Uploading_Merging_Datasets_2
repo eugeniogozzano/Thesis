@@ -1,0 +1,446 @@
+#cutting dataset to just 90s (from 1992)
+dataset = read.csv("dataset_thesis_corrected_v3.csv")
+library(dplyr)
+
+
+df_filtered_92 <- dataset %>% 
+  filter(year >= 1992)
+
+#################################################################################
+#remember to adjust the recent years ##########################################
+#uploading the population
+install.packages("WDI")
+library(WDI)
+
+#The World Bank indicator code for Total Population is "SP.POP.TOTL"
+pop_data <- WDI(
+  indicator = "SP.POP.TOTL", 
+  country = "all",      
+  start = 1992,         
+  end = 2025,           
+  extra = TRUE)
+
+#merge it
+
+pop_clean <- pop_data %>%
+  select(
+    iso_code_mapped = iso3c,     # Rename to match your dataset's column
+    year, 
+    population = SP.POP.TOTL     # Rename indicator to a readable variable
+  ) %>%
+  filter(!is.na(iso_code_mapped) & iso_code_mapped != "") # Remove aggregate regions (like "World" or "Euro Area")
+
+# Assuming your filtered dataset from 1992 onwards is called 'df_filtered'
+# Merge the population data into your dataset
+df_pop <- df_filtered_92 %>%
+  left_join(pop_clean, by = c("iso_code_mapped", "year"))
+
+# It pulls directly from the official World Bank API, which aggregates data from the UN Population Division and national statistical offices.
+
+#################################################################################
+
+prime_age = read.csv("WPP2024_PopulationByAge5GroupSex_Percentage_Medium.csv")
+prime_age_92 =  prime_age |> 
+  select(-c( LocID, Location, Variant, VarID, Notes, SDMX_code)) |> 
+  filter(Time >= 1992) 
+  
+
+
+
+# 3. Calculate the correct percentage
+prime_percentage <- prime_age_92 %>%
+  # Remove rows with empty/missing ISO codes (like the global/regional aggregates)
+  filter(!is.na(ISO3_code) & ISO3_code != "") %>%
+  
+  # Filter for the "athletic prime" age brackets
+  filter(AgeGrp %in% c("15-19", "20-24", "25-29", "30-34", "35-39")) %>%
+  
+  # Group by country and year
+  group_by(ISO3_code, Time) %>%
+  
+  # Because PopTotal is already a percentage, just adding them together gives you the final %
+  summarise(perc_athletic_prime = sum(PopTotal, na.rm = TRUE), .groups = "drop") %>%
+  
+  # Rename columns to match your main thesis dataset exactly
+  rename(iso_code_mapped = ISO3_code, year = Time)
+
+# 4. Merge this back into your main dataset
+df_after_prime_age <- df_pop %>%
+  left_join(prime_percentage, by = c("iso_code_mapped", "year"))
+
+
+
+# 6. Save the perfectly complete dataset
+write.csv(df_after_prime_age, "dataset_thesis_1992_after_prime_age_v4.csv", row.names = FALSE)
+
+#UPLOADING TEAM SIZE
+
+dataset = read.csv("dataset_thesis_1992_after_prime_age_v4.csv")
+library(dplyr)
+library(readr)
+
+olympics <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-07-27/olympics.csv")
+
+# 2. Group by 'noc' and 'year', and count unique athletes using 'id'
+team_size_df <- olympics %>%
+  group_by(noc, year) %>%
+  summarise(
+    Team_Size = n_distinct(id), # Counts unique athlete IDs
+    .groups = "drop"            # Ungroups the data afterwards
+  )
+
+
+#FIXING COUNTRY CODES
+
+team_size_df <- team_size_df %>%
+  mutate(noc = recode(noc, 
+                      "GER" = "DEU", # NOC to ISO
+                      "SUI" = "CHE", 
+                      "NED" = "NLD"))
+
+# 4. Merge the Team Size data into your thesis dataset using a left_join
+# Note: We match 'iso_code_mapped' from your dataset to 'noc', and 'year' to 'year'
+dataset_team_size <- dataset %>%
+  left_join(
+    team_size_df, 
+    by = c("iso_code_mapped" = "noc", "year" = "year")
+  )
+
+
+# 5. Save your new enriched dataset to a CSV file
+write.csv(dataset_team_size, "dataset_thesis_teamsize_v5.csv", row.names = FALSE)
+
+dataset = read.csv("dataset_thesis_teamsize_v5.csv")
+
+
+
+dataset_clean = dataset |>
+  select(-c(GDP_KAGGLE, Country.Name_WB, Country.Name_KAGGLE, GDP_WB))
+
+write.csv(dataset_clean, "dataset_thesis_cleaned_v6.csv", row.names = FALSE)
+
+library(dplyr)
+
+# 1. Load the base dataset and BOTH new medal files
+dataset = read.csv("dataset_thesis_cleaned_v6.csv")
+tokyo = read.csv("Tokyo_Medals_2021_with_ISO.csv")
+paris = read.csv("Medals_2024_with_ISO.csv")
+
+# 2. Fix Kosovo in Tokyo and standardize Tokyo columns
+tokyo_clean <- tokyo %>%
+  mutate(ISO_Code = ifelse(Country == "Kosovo", "XKX", ISO_Code)) %>%
+  rename(iso_code_mapped = ISO_Code, Gold_new = Gold.Medal, Silver_new = Silver.Medal, Bronze_new = Bronze.Medal, Total_new = Total) %>%
+  mutate(year = 2021) %>% 
+  select(iso_code_mapped, year, Gold_new, Silver_new, Bronze_new, Total_new)
+
+# 3. Standardize Paris columns
+paris_clean <- paris %>%
+  rename(iso_code_mapped = ISO_Code, Gold_new = Gold.Medal, Silver_new = Silver.Medal, Bronze_new = Bronze.Medal, Total_new = Total) %>%
+  mutate(year = 2024) %>% 
+  select(iso_code_mapped, year, Gold_new, Silver_new, Bronze_new, Total_new)
+
+# 4. Stack Tokyo and Paris together (Highly efficient)
+new_medals <- bind_rows(tokyo_clean, paris_clean)
+
+# ==========================================
+# 5. FIX ALL MISSING ROWS (2021 & 2024)
+# ==========================================
+known_isos <- unique(dataset$iso_code_mapped)
+needed_rows <- new_medals %>% select(iso_code_mapped, year)
+existing_rows <- dataset %>% select(iso_code_mapped, year)
+
+# Identify any country-year combination that is missing from the main dataset
+missing_rows <- needed_rows %>%
+  anti_join(existing_rows, by = c("iso_code_mapped", "year")) %>%
+  filter(iso_code_mapped %in% known_isos)
+
+# Auto-create them
+if(nrow(missing_rows) > 0) {
+  dataset <- bind_rows(dataset, missing_rows)
+  message("Created missing rows for: \n", paste(missing_rows$iso_code_mapped, missing_rows$year, sep="-", collapse=", "))
+}
+
+# ==========================================
+# 6. THE MASTER MERGE
+# ==========================================
+dataset_final <- dataset %>%
+  left_join(new_medals, by = c("iso_code_mapped", "year")) %>%
+  mutate(
+    Gold = ifelse(!is.na(Gold_new), Gold_new, Gold),
+    Silver = ifelse(!is.na(Silver_new), Silver_new, Silver),
+    Bronze = ifelse(!is.na(Bronze_new), Bronze_new, Bronze),
+    Total = ifelse(!is.na(Total_new), Total_new, Total)
+  ) %>%
+  select(-Gold_new, -Silver_new, -Bronze_new, -Total_new) %>%
+  arrange(iso_code_mapped, year)
+
+# ==========================================
+# DIAGNOSTIC CHECKS (Run after the master merge)
+# ==========================================
+
+# 1. Which medals were completely DROPPED? (e.g., AIN, EOR)
+known_isos <- unique(dataset$iso_code_mapped)
+dropped_medals <- new_medals %>% filter(!iso_code_mapped %in% known_isos)
+
+if(nrow(dropped_medals) > 0) {
+  message("CRITICAL WARNING: The following medals were DELETED because the country doesn't exist in your historical data:")
+  print(dropped_medals)
+}
+
+# 2. Check if any rows were successfully auto-created (like Taiwan)
+if(nrow(missing_rows) > 0) {
+  message("SUCCESS: Blank economic rows were automatically generated for these countries so they could receive their medals:")
+  print(missing_rows)
+}
+
+# 3. Final sanity check: Are there any missing ISO codes?
+missing_iso <- new_medals %>% filter(is.na(iso_code_mapped))
+if(nrow(missing_iso) > 0) {
+  message("WARNING: The following raw entries had no ISO mapping at all:")
+  print(missing_iso)
+
+}
+
+
+
+
+
+############################################################################################################
+#CHECKING ISO CODES
+library(countrycode)
+invalid_codes <- dataset_final %>%
+  select(iso_code_mapped) %>%
+  distinct() %>%
+  mutate(
+    # Attempt to translate the ISO code to a real country name
+    # If it fails (returns NA), the code is invalid or a non-standard NOC code
+    country_name = countrycode(iso_code_mapped, origin = "iso3c", destination = "country.name"),
+    is_valid = !is.na(country_name)
+  ) %>%
+  filter(is_valid == FALSE)
+
+# 4. Print the offenders
+if(nrow(invalid_codes) > 0) {
+  message("CRITICAL: The following codes in your dataset are NOT valid ISO-3 codes:")
+  print(invalid_codes)
+} else {
+  message("SUCCESS: All codes in your dataset are perfectly valid ISO-3 codes.")
+}
+
+
+############################################################################################################
+#CORRECTING WRONG ISO CODES
+dataset_final <- dataset_final %>%
+  mutate(iso_code_mapped = ifelse(iso_code_mapped == "CHI", "CHL", iso_code_mapped))
+
+# 2. Define the exact vector of useless macroeconomic codes
+# (Notice CHI and XKX are explicitly excluded from this kill list)
+macro_codes <- c(
+  "AFE", "AFW", "ARB", "CEB", "CSS", "EAP", "EAR", "EAS", "ECA", "ECS",
+  "EMU", "EUU", "FCS", "HIC", "HPC", "IBD", "IBT", "IDA", "IDB", "IDX",
+  "INX", "LAC", "LCN", "LDC", "LIC", "LMC", "LMY", "LTE", "MEA", "MIC",
+  "MNA", "NAC", "OED", "OSS", "PRE", "PSS", "PST", "SAS", "SSA", "SSF",
+  "SST", "TEA", "TEC", "TLA", "TMN", "TSA", "TSS", "UMC", "WLD"
+)
+
+# 3. Purge the macro areas from the dataset
+dataset_cleaned <- dataset_final %>%
+  filter(!iso_code_mapped %in% macro_codes)
+
+# 4. Verify the fix
+message("Rows remaining after purge: ", nrow(dataset_cleaned))
+
+#############################################################################################################
+
+#CHECKING GDP DATA FOR THE COUNTRIES
+missing_economic_data <- dataset_cleaned %>%
+  # Filter only for years where the country actually competed/won medals
+  filter(!is.na(Total) & Total > 0) %>%
+  # Check if their economic data is missing
+  filter(is.na(GDP_merged)) %>%
+  select(iso_code_mapped, year, Total, GDP_merged) %>%
+  arrange(iso_code_mapped, year)
+
+if(nrow(missing_economic_data) > 0) {
+  message("CRITICAL: The following medal-winning countries are MISSING economic data:")
+  print(missing_economic_data)
+} else {
+  message("SUCCESS: All medal-winning countries have their economic data populated.")
+}
+missing_summary <- missing_economic_data %>%
+  group_by(iso_code_mapped) %>%
+  summarise(
+    years_missing = paste(year, collapse = ", "),
+    count_missing_years = n(),
+    total_medals_at_risk = sum(Total, na.rm = TRUE)
+  ) %>%
+  # Sort by the ones with the most medals so you can fix the biggest problems first
+  arrange(desc(total_medals_at_risk))
+
+print(missing_summary, n = 30) # Prints the top 30 offenders
+
+############################################################################################################
+#WORKING ON ONLY SUMMER OLYMPICS - CHECKING FOR MISSING VALUES IN GDP
+summer_years <- c(1996, 1996, 2000, 2004, 2008, 2012, 2016, 2021, 2024)
+
+dataset_summer <- dataset_cleaned %>%
+  filter(year %in% summer_years)
+
+missing_summary_summer <- dataset_summer %>%
+  filter(!is.na(Total) & Total > 0) %>%
+  filter(is.na(GDP_merged)) %>% # Replace with your actual GDP column name
+  group_by(iso_code_mapped) %>%
+  summarise(
+    years_missing = paste(year, collapse = ", "),
+    count_missing_years = n(),
+    total_medals_at_risk = sum(Total, na.rm = TRUE)
+  ) %>%
+  arrange(desc(total_medals_at_risk))
+
+print(missing_summary_summer)
+#############################################################################################################
+#LAST CHECK - INTERPOLATION OF THE DATA
+library(tidyr)
+library(zoo) 
+
+dataset_imputed <- dataset_summer %>%
+  arrange(iso_code_mapped, year) %>%
+  group_by(iso_code_mapped) %>%
+  # A. First pass: Linearly interpolate internal gaps (e.g., between 2000 and 2016)
+  mutate(
+    GDP_merged = na.approx(GDP_merged, na.rm = FALSE),
+    population = na.approx(population, na.rm = FALSE),
+    perc_athletic_prime = na.approx(perc_athletic_prime, na.rm = FALSE)
+  ) %>%
+  # B. Second pass: Use 'fill' as a dataframe verb to carry edge-case data forward AND backward
+  # This grabs the 2000 data and pulls it back to 1996 for NZL and BRA
+  fill(GDP_merged, population, perc_athletic_prime, .direction = "downup") %>%
+  ungroup()
+
+# Check if it worked
+missing_after_imputation <- dataset_imputed %>%
+  filter(!is.na(Total) & Total > 0) %>%
+  filter(is.na(GDP_merged))
+
+if(nrow(missing_after_imputation) > 0) {
+  message("These countries STILL have no economic data (they likely have no data in your dataset at all):")
+  print(unique(missing_after_imputation$iso_code_mapped))
+} else {
+  message("SUCCESS: All economic data has been interpolated and filled. You are ready for Python.")
+}
+#############################################################################################################
+
+
+#Adding the columns Weighted_SCore, Prev_Total_Score, etc etc
+dataset_final <- dataset_imputed %>%
+  # 1. FORCE ALL ROWS TO EXIST (This must happen first!)
+  complete(
+    iso_code_mapped, 
+    year = summer_years, 
+    fill = list(Gold = 0, Silver = 0, Bronze = 0, Total = 0)
+  ) %>%
+  
+  # 2. IMPUTE ECONOMIC DATA 
+  arrange(iso_code_mapped, year) %>%
+  group_by(iso_code_mapped) %>%
+  mutate(
+    GDP_merged = na.approx(GDP_merged, na.rm = FALSE),
+    population = na.approx(population, na.rm = FALSE),
+    perc_athletic_prime = na.approx(perc_athletic_prime, na.rm = FALSE)
+  ) %>%
+  # This will now successfully grab the 2000 data and push it backward to the newly created 1996/1992 rows!
+  fill(GDP_merged, population, perc_athletic_prime, .direction = "downup") %>%
+  
+  # 3. CALCULATE HOST AND LAG VARIABLES
+  mutate(
+    Weighted_Score = (Gold * 3) + (Silver * 2) + (Bronze * 1),
+    
+    Is_Host = case_when(
+      iso_code_mapped == "ESP" & year == 1992 ~ 1,
+      iso_code_mapped == "USA" & year == 1996 ~ 1,
+      iso_code_mapped == "AUS" & year == 2000 ~ 1,
+      iso_code_mapped == "GRC" & year == 2004 ~ 1,
+      iso_code_mapped == "CHN" & year == 2008 ~ 1,
+      iso_code_mapped == "GBR" & year == 2012 ~ 1,
+      iso_code_mapped == "BRA" & year == 2016 ~ 1,
+      iso_code_mapped == "JPN" & year == 2021 ~ 1,
+      iso_code_mapped == "FRA" & year == 2024 ~ 1,
+      TRUE ~ 0
+    ),
+    
+    Prev_Total_Medals = lag(Total, n = 1),
+    Prev_Weighted_Score = lag(Weighted_Score, n = 1)
+  ) %>%
+  ungroup() %>%
+  
+  # 4. OVERWRITE MISSING LAGS FOR THE 1992 BASELINE
+  mutate(
+    Prev_Total_Medals = ifelse(is.na(Prev_Total_Medals), 0, Prev_Total_Medals),
+    Prev_Weighted_Score = ifelse(is.na(Prev_Weighted_Score), 0, Prev_Weighted_Score)
+  )
+
+##############################################################################################################
+
+
+
+write.csv(dataset_final, "dataset_thesis_complete_interplolation_v7.csv", row.names = FALSE)
+
+library(dplyr)
+library(jsonlite)
+
+#TRYING TO ADJUST THE DATA
+dataset = read.csv("dataset_thesis_complete_interplolation_v7.csv")
+
+HDI <- read.csv("https://ourworldindata.org/grapher/human-development-index.csv?v=1&csvType=full&useColumnShortNames=true")
+Augmented_HDI <- read.csv("https://ourworldindata.org/grapher/augmented-human-development-index.csv?v=1&csvType=full&useColumnShortNames=true")
+
+HDI = HDI |>
+  filter(year > 1995)
+
+Augmented_HDI = Augmented_HDI |>
+  filter(year > 1995)
+
+
+final_dataset <- dataset %>%
+  left_join(HDI, by = c("iso_code_mapped" = "code", "year" = "year")) %>%
+  left_join(Augmented_HDI, by = c("iso_code_mapped" = "code", "year" = "year"))
+
+final_dataset <- final_dataset %>%
+  select(-c("entity.x", "owid_region.x", "entity.y", "owid_region.y", "ahdi__annotations"))
+
+colMeans(is.na(final_dataset)) * 100 #CHECKS THE PERCENTAGE OF MISSING DATA. I REMOVED THE AHDI CAUSE TOO MUCH MISSING
+
+final_dataset = final_dataset |>
+  select(-c("ahdi"))
+
+final_dataset = final_dataset |>
+  rename(hdi = hdi__sex_total)
+
+#ADDING RUSSIA (THAT PARTICPATED AS ROC) FROM 2024 OLYMPICS.
+#This because:
+#Leaving them at 0 is statistically dishonest for a model that measures a nation's capacity to produce elite athletes. Your thesis investigates how socio-economic variables like GDP and GDI translate into athletic output; those AIN athletes were produced by the Russian and Belarusian systems, funded by their respective GDPs, and trained within their infrastructure.
+#Methodologically, you must handle 2024 as an anomaly for these two nations. In your Random Forest and Negative Binomial models, these data points will appear extremely "inefficient"—it will look like a $2 trillion economy (Russia) suddenly lost its ability to produce medals. In reality, the output was artificially capped by external sanctions, not a change in socio-economic drivers.
+
+# If you include 2024 data for Russia and Belarus without a dummy variable for "Sanctions/Neutral Status," you will skew your coefficients. For your 2028 prediction, do not rely on the 2024 "Team Size" for these countries; it is not a representative proxy of their actual athletic capacity.
+
+paris2024 = read.csv("Medals_2024_with_ISO.csv")
+
+final_dataset <- final_dataset %>%
+  mutate(
+    Gold = ifelse(iso_code_mapped == "BLR" & year == 2024, 1, Gold),
+    Silver = ifelse(iso_code_mapped == "BLR" & year == 2024, 2, Silver),
+    Bronze = ifelse(iso_code_mapped == "BLR" & year == 2024, 1, Bronze),
+    Total = Gold + Silver + Bronze,
+    Weighted_Score = 3*Gold + 2*Silver + 1*Bronze
+  )
+
+final_dataset = final_dataset |>
+  mutate(
+    Silver = ifelse(iso_code_mapped == "RUS" & year == 2024, 1, Silver),
+    Total = Gold + Silver + Bronze,
+    Weighted_Score = 3*Gold + 2*Silver + 1*Bronze
+  )
+
+
+write.csv(final_dataset, "dataset_thesis_new_hdi_v8.csv", row.names = FALSE)
+
