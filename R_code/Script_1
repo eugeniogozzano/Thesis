@@ -100,3 +100,322 @@ if (nrow(code_mismatches) > 0) {
 }
 
 write.csv(merged_join, "merged_gdp_data_historical_recent.csv", row.names = FALSE)
+
+df3_bis <- read.csv("https://ourworldindata.org/grapher/inequality-adjusted-human-development-index.csv?v=1&csvType=full&useColumnShortNames=true")
+
+metadata_ihdi <- fromJSON("https://ourworldindata.org/grapher/inequality-adjusted-human-development-index.metadata.json?v=1&csvType=full&useColumnShortNames=true")
+
+df4 <- read.csv("https://ourworldindata.org/grapher/gender-development-index.csv?v=1&csvType=full&useColumnShortNames=true")
+
+
+metadata_gdi <- fromJSON("https://ourworldindata.org/grapher/gender-development-index.metadata.json?v=1&csvType=full&useColumnShortNames=true")
+
+merged_join = read.csv("/Users/Eugenio/Desktop/THESIS/THESIS_R/merged_gdp_data_historical_recent.csv")
+
+###########################___PREP TO MERGING THEM WITH MERGED_JOIN________###########################
+
+df3_clean <- df3_bis %>%
+  # Remove regional/aggregate data (rows without proper country codes)
+  filter(!is.na(Code) & Code != "" & nchar(Code) == 3) %>%
+  # Keep only needed columns and rename for clarity
+  select(
+    `Country.Code` = Code,
+    Year,
+    ihdi = ihdi
+  ) %>%
+  # Make sure Year is numeric
+  mutate(
+    Year = as.numeric(Year),
+    `Country.Code` = as.character(`Country.Code`)
+  ) %>%
+  # Remove any duplicates (same country-year combination)
+  distinct(`Country.Code`, Year, .keep_all = TRUE)
+
+
+df4_clean <- df4 %>%
+  # Remove regional/aggregate data
+  filter(!is.na(Code) & Code != "" & nchar(Code) == 3) %>%
+  # Keep only needed columns
+  select(
+    `Country.Code` = Code,
+    Year,
+    gdi
+  ) %>%
+  # Make sure Year is numeric
+  mutate(
+    Year = as.numeric(Year),
+    `Country.Code` = as.character(`Country.Code`)
+  ) %>%
+  # Remove any duplicates
+  distinct(`Country.Code`, Year, .keep_all = TRUE)
+
+
+###########################_____MERGING THEM WITH MERGED_JOIN________################################
+final_merged_gdp_hdi_gdi <- merged_join %>%
+  left_join(df3_clean, by = c("Country.Code", "Year")) %>%
+  left_join(df4_clean, by = c("Country.Code", "Year"))
+
+###########################_____CHECKING FOR MISTAKES________######################################
+ihdi_only <- final_merged_gdp_hdi_gdi %>%
+  filter(!is.na(ihdi) & is.na(gdi)) %>%
+  nrow()
+cat("Rows with IHDI but no GDI:", ihdi_only, "\n")
+
+gdi_only <- final_merged_gdp_hdi_gdi %>%
+  filter(is.na(ihdi) & !is.na(gdi)) %>%
+  nrow()
+cat("Rows with GDI but no IHDI:", gdi_only, "\n")
+
+both <- final_merged_gdp_hdi_gdi %>%
+  filter(!is.na(ihdi) & !is.na(gdi)) %>%
+  nrow()
+cat("Rows with both IHDI and GDI:", both, "\n")
+
+###########################_____CHECKING FOR MISTAKES_2_______######################################
+ihdi_missing <- anti_join(df3_clean, merged_join, by = "Country.Code") %>%
+  distinct(`Country.Code`) %>%
+  pull()
+
+if (length(ihdi_missing) > 0) {
+  cat("Country codes in IHDI but not in GDP data:", ihdi_missing, "\n")
+} else {
+  cat("All IHDI country codes found in GDP data\n")
+}
+
+# Countries in GDI but not in GDP data
+gdi_missing <- anti_join(df4_clean, merged_join, by = "Country.Code") %>%
+  distinct(`Country.Code`) %>%
+  pull()
+
+if (length(gdi_missing) > 0) {
+  cat("Country codes in GDI but not in GDP data:", gdi_missing, "\n")
+} else {
+  cat("All GDI country codes found in GDP data\n")
+}
+
+#Not super important countries are missing
+
+###########################_____SAVING DATASET_______######################################
+write.csv(final_merged_gdp_hdi_gdi, "final_merged_data_gdp_ihdi_gdi.csv", row.names = FALSE)
+library(tidyverse)
+
+
+
+olympics <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-07-27/olympics.csv")
+
+
+medal_counts <- olympics %>%
+  filter(!is.na(medal)) %>%
+  group_by(noc, year, season) %>%
+  summarize(
+    Gold = sum(medal == "Gold"),
+    Silver = sum(medal == "Silver"),
+    Bronze = sum(medal == "Bronze"),
+    .groups = 'drop'
+  )
+
+library(dplyr)
+library(countrycode)
+
+# --- STEP 1: Map Country Codes (Run this ONCE) ---
+# We combine your custom matches into a single command.
+medal_counts$iso_code_mapped <- countrycode(
+  sourcevar = medal_counts$noc,
+  origin = "ioc",
+  destination = "iso3c",
+  custom_match = c(
+    "LIB" = "LBN",  # Fix Lebanon
+    "KOS" = "XKX",  # Fix Kosovo
+    "TPE" = "TWN",  # Taiwan
+    "SGP" = "SGP",   # Singapore
+     "FRG" = "DEU" # Uncomment this if you WANT to map West Germany to Germany
+  )
+)
+# 1. Data Incompatibility: Historical entities like the Soviet Union (URS) and East Germany (GDR) do not have current economic data (GDP), so keeping them would force the model to analyze countries with "0 GDP" but high medal counts, which would severely distort the correlation between wealth and athletic success.
+# 
+# 2. Predictive Accuracy: For predicting the 2028 Olympics, it is statistically more accurate to rely on the consistent 30-year dataset (1996–2024) of modern nations like Russia and Germany rather than including dissolved empires whose borders, populations, and sports infrastructure no longer exist.
+
+# --- STEP 2: Filter out Historical/Unmatched (Option 1) ---
+# This removes Soviet Union (URS), East Germany (GDR), etc.
+medal_counts_clean <- medal_counts %>%
+  filter(!is.na(iso_code_mapped))
+
+# --- STEP 3: Aggregate by ISO Code and Year ---
+# This sums up the medals to ensure 1 row per Country-Year
+medal_counts_aggregated <- medal_counts_clean %>%
+  group_by(iso_code_mapped, year) %>%  # Note: 'year' is lowercase in your medal_counts
+  summarise(
+    Gold = sum(Gold, na.rm = TRUE),
+    Silver = sum(Silver, na.rm = TRUE),
+    Bronze = sum(Bronze, na.rm = TRUE),
+    Total = sum(Gold, Silver, Bronze, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# --- STEP 4: The Final Merge (FULL JOIN) ---
+# full_join keeps Afghanistan (Medals, no GDP) AND USA 2009 (GDP, no Medals)
+dataset_after_medals <- full_join(
+  medal_counts_aggregated, 
+  final_merged_data_gdp_ihdi_gdi, 
+  
+  by = c("iso_code_mapped" = "Country.Code", "year" = "Year") 
+)
+
+# --- STEP 5: Clean Up NAs (Optional but Recommended) ---
+# If a country has GDP but no medals (e.g., 2009), specific medal counts should be 0, not NA.
+dataset_after_medals <- dataset_after_medals %>%
+  mutate(
+    Gold = ifelse(is.na(Gold), 0, Gold),
+    Silver = ifelse(is.na(Silver), 0, Silver),
+    Bronze = ifelse(is.na(Bronze), 0, Bronze),
+    Total = ifelse(is.na(Total), 0, Total)
+  )
+
+write.csv(dataset_after_medals, "dataset_after_medals_jan.csv", row.names = FALSE)
+library(tidyverse)
+library(countrycode)
+library(dplyr)
+
+# 1. Load Data
+olympics <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-07-27/olympics.csv")
+
+# 2. THE FIX: Deduplicate Events
+# We keep only UNIQUE combinations of (Year, Event, Medal, Country).
+# This ensures that "Men's Basketball Gold" counts as 1 medal, even if 12 players are listed.
+medal_counts_clean <- olympics %>%
+  filter(!is.na(medal)) %>%
+  distinct(year, season, event, medal, noc, .keep_all = TRUE) %>%  # <--- THIS IS THE KEY FIX
+  group_by(noc, year, season) %>%
+  summarize(
+    Gold = sum(medal == "Gold"),
+    Silver = sum(medal == "Silver"),
+    Bronze = sum(medal == "Bronze"),
+    Total = n(),
+    .groups = 'drop'
+  )
+
+# 3. Map Country Codes (Your original code)
+medal_counts_clean$iso_code_mapped <- countrycode(
+  sourcevar = medal_counts_clean$noc,
+  origin = "ioc",
+  destination = "iso3c",
+  custom_match = c(
+    "LIB" = "LBN", 
+    "KOS" = "XKX", 
+    "TPE" = "TWN", 
+    "SGP" = "SGP",
+    
+    # The German Reunification Fix
+    "FRG" = "DEU",  # West Germany -> Germany
+    "GDR" = "DEU",  # East Germany -> Germany (Combine them)
+    
+    # The Soviet Block (Optional: Map URS to NA explicitly to be safe)
+    "URS" = NA,
+    "YUG" = NA
+  )
+)
+
+# 4. Aggregation (Country-Year)
+medal_counts_aggregated <- medal_counts_clean %>%
+  filter(!is.na(iso_code_mapped)) %>%
+  group_by(iso_code_mapped, year) %>%
+  summarise(
+    Gold = sum(Gold, na.rm = TRUE),
+    Silver = sum(Silver, na.rm = TRUE),
+    Bronze = sum(Bronze, na.rm = TRUE),
+    Total = sum(Total, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# ---------------------------------------------------------
+# NEW STEP: Feature Engineering (Adding the Thesis Variables)
+# ---------------------------------------------------------
+
+# A. Create Weighted Medal Score (Gold=3, Silver=2, Bronze=1)
+medal_counts_aggregated <- medal_counts_aggregated %>%
+  mutate(Weighted_Score = (Gold * 3) + (Silver * 2) + (Bronze * 1))
+
+# B. Create "Host Effect" Variable
+# List of hosts (Summer Games mainly, updated for your timeline)
+hosts <- data.frame(
+  year = c(1896, 1900, 1904, 1908, 1912, 1920, 1924, 1928, 1932, 1936, 
+           1948, 1952, 1956, 1960, 1964, 1968, 1972, 1976, 1980, 1984, 
+           1988, 1992, 1996, 2000, 2004, 2008, 2012, 2016, 2021, 2024),
+  host_iso = c("GRC", "FRA", "USA", "GBR", "SWE", "BEL", "FRA", "NLD", 
+               "USA", "DEU", "GBR", "FIN", "AUS", "ITA", "JPN", "MEX", 
+               "DEU", "CAN", "RUS", "USA", "KOR", "ESP", "USA", "AUS", 
+               "GRC", "CHN", "GBR", "BRA", "JPN", "FRA")
+)
+medal_counts_aggregated <- medal_counts_aggregated %>%
+  left_join(hosts, by = "year") %>%
+  mutate(Is_Host = ifelse(!is.na(host_iso) & iso_code_mapped == host_iso, 1, 0)) %>%
+  select(-host_iso)
+
+# C. Create Lagged Variables (Previous Olympics Performance)
+# We calculate the medals won in the PREVIOUS cycle for each country
+medal_counts_aggregated <- medal_counts_aggregated %>%
+  arrange(iso_code_mapped, year) %>%
+  group_by(iso_code_mapped) %>%
+  mutate(
+    Prev_Total_Medals = lag(Total, order_by = year),
+    Prev_Weighted_Score = lag(Weighted_Score, order_by = year)
+  ) %>%
+  ungroup()
+
+# ---------------------------------------------------------
+# 5. Merge with your Economic Data (GDP, HDI, etc.)
+# ---------------------------------------------------------
+
+# Ensure you have your 'final_merged_data_gdp_ihdi_gdi' loaded in R
+# If not, load it:
+final_merged_data_gdp_ihdi_gdi <- read.csv("final_merged_data_gdp_ihdi_gdi.csv")
+
+dataset_final <- full_join(
+  medal_counts_aggregated, 
+  final_merged_data_gdp_ihdi_gdi, 
+  by = c("iso_code_mapped" = "Country.Code", "year" = "Year") 
+)
+
+# 6. Final Cleanup (Fill NAs with 0 only for medal columns)
+dataset_final <- dataset_final %>%
+  mutate(
+    Gold = ifelse(is.na(Gold), 0, Gold),
+    Silver = ifelse(is.na(Silver), 0, Silver),
+    Bronze = ifelse(is.na(Bronze), 0, Bronze),
+    Total = ifelse(is.na(Total), 0, Total),
+    Weighted_Score = ifelse(is.na(Weighted_Score), 0, Weighted_Score),
+    Is_Host = ifelse(is.na(Is_Host), 0, Is_Host)
+    # Note: Do NOT fill Prev_Total_Medals with 0 yet, as NA means "didn't participate before"
+  )
+
+# Export
+write.csv(dataset_final, "dataset_thesis_corrected_v2.csv", row.names = FALSE)
+
+
+#THINGS:
+#issue about winter/summer: in many years they were held in the same year and this might create problems 
+library(tidyverse)
+library(dplyr)
+dataset = read.csv("dataset_thesis_corrected_v2.csv")
+
+#MERGING THE TWO COLUMNS OF GDPS together 
+dataset_new_gdp <- dataset |>
+  mutate(
+    # Convert the column back into a proper number
+    GDP_WB = as.numeric(GDP_WB),
+    # Now both are doubles, so coalesce will work perfectly
+    GDP_merged = coalesce(GDP_WB, GDP_KAGGLE)
+  )
+
+#what R switched into NA
+dataset |>
+  # Keep rows where converting to numeric creates an NA...
+  filter(is.na(as.numeric(GDP_WB))) |>
+  # ...BUT ignore the rows that were already NA to begin with
+  filter(!is.na(GDP_WB)) |>
+  # Show me just the text that caused the problem
+  select(GDP_WB) |>
+  distinct()
+
+write.csv(dataset_new_gdp, "dataset_thesis_corrected_v3.csv", row.names = FALSE)
+
