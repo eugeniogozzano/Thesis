@@ -1,6 +1,15 @@
+install.packages("WDI")
+library(WDI)
+library(tidyverse)
+library(readr)
+library(countrycode)
+library(zoo) 
+library(jsonlite)
+
+
+
 #cutting dataset to just 90s (from 1992)
 dataset = read.csv("dataset_thesis_corrected_v3.csv")
-library(dplyr)
 
 
 df_filtered_92 <- dataset %>% 
@@ -9,8 +18,6 @@ df_filtered_92 <- dataset %>%
 #################################################################################
 #remember to adjust the recent years ##########################################
 #uploading the population
-install.packages("WDI")
-library(WDI)
 
 #The World Bank indicator code for Total Population is "SP.POP.TOTL"
 pop_data <- WDI(
@@ -39,7 +46,7 @@ df_pop <- df_filtered_92 %>%
 
 #################################################################################
 
-prime_age = read.csv("WPP2024_PopulationByAge5GroupSex_Percentage_Medium.csv")
+prime_age <- read.csv(here("data", "WPP2024_PopulationByAge5GroupSex_Percentage_Medium.csv"))
 prime_age_92 =  prime_age |> 
   select(-c( LocID, Location, Variant, VarID, Notes, SDMX_code)) |> 
   filter(Time >= 1992) 
@@ -76,8 +83,6 @@ write.csv(df_after_prime_age, "dataset_thesis_1992_after_prime_age_v4.csv", row.
 #UPLOADING TEAM SIZE
 
 dataset = read.csv("dataset_thesis_1992_after_prime_age_v4.csv")
-library(dplyr)
-library(readr)
 
 olympics <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-07-27/olympics.csv")
 
@@ -99,7 +104,7 @@ team_size_df <- team_size_df %>%
                       "NED" = "NLD"))
 
 # 4. Merge the Team Size data into your thesis dataset using a left_join
-# Note: We match 'iso_code_mapped' from your dataset to 'noc', and 'year' to 'year'
+# Note: We match 'iso_code_mapped' to 'noc', and 'year' to 'year'
 dataset_team_size <- dataset %>%
   left_join(
     team_size_df, 
@@ -119,12 +124,11 @@ dataset_clean = dataset |>
 
 write.csv(dataset_clean, "dataset_thesis_cleaned_v6.csv", row.names = FALSE)
 
-library(dplyr)
 
 # 1. Load the base dataset and BOTH new medal files
 dataset = read.csv("dataset_thesis_cleaned_v6.csv")
-tokyo = read.csv("Tokyo_Medals_2021_with_ISO.csv")
-paris = read.csv("Medals_2024_with_ISO.csv")
+tokyo <- read.csv(here("data", "Tokyo_Medals_2021_with_ISO.csv"))
+paris <- read.csv(here("data", "Medals_2024_with_ISO.csv"))
 
 # 2. Fix Kosovo in Tokyo and standardize Tokyo columns
 tokyo_clean <- tokyo %>%
@@ -207,7 +211,7 @@ if(nrow(missing_iso) > 0) {
 
 ############################################################################################################
 #CHECKING ISO CODES
-library(countrycode)
+
 invalid_codes <- dataset_final %>%
   select(iso_code_mapped) %>%
   distinct() %>%
@@ -300,8 +304,7 @@ missing_summary_summer <- dataset_summer %>%
 print(missing_summary_summer)
 #############################################################################################################
 #LAST CHECK - INTERPOLATION OF THE DATA
-library(tidyr)
-library(zoo) 
+
 
 dataset_imputed <- dataset_summer %>%
   arrange(iso_code_mapped, year) %>%
@@ -385,8 +388,6 @@ dataset_final <- dataset_imputed %>%
 
 write.csv(dataset_final, "dataset_thesis_complete_interplolation_v7.csv", row.names = FALSE)
 
-library(dplyr)
-library(jsonlite)
 
 #TRYING TO ADJUST THE DATA
 dataset = read.csv("dataset_thesis_complete_interplolation_v7.csv")
