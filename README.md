@@ -4,11 +4,10 @@
 
 This repository contains the complete computational workflow, data orchestration pipeline, and statistical modeling for forecasting Olympic medal counts. 
 
-The core methodological objective of this research is to bridge structural socio-economic modeling with non-linear machine learning architectures. The pipeline benchmarks structural parametric models (Generalized Linear Mixed Models, `glmmTMB`) against complex tree-based ensembles. By integrating **Explainable AI (XAI)** frameworks—specifically **TreeSHAP** (SHapley Additive exPlanations)—the workflow extracts marginal feature contributions, unpacking non-linear socio-economic and demographic interactions without sacrificing algorithmic transparency or predictive accuracy.
+The core methodological objective of this research is to bridge structural socio-economic modeling with non-linear machine learning architectures. The pipeline benchmarks structural parametric models (Generalized Linear Mixed Models, `glmmTMB`) against complex tree-based ensembles. By integrating **Explainable AI ** frameworks, specifically **TreeSHAP** (SHapley Additive exPlanations), the workflow extracts marginal feature contributions, unpacking non-linear socio-economic and demographic interactions without sacrificing predictive accuracy.
 
 ##  Repository Structure
 
-To guarantee full self-containment and seamless execution across operating systems, this project enforces strict directory hygiene and utilizes relative pathing via the R `here` package. **No absolute paths are used.**
 
 ```text
 .
