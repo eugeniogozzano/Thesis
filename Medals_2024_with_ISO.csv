@@ -1,0 +1,93 @@
+country_code,country,country_long,Gold Medal,Silver Medal,Bronze Medal,Total,ISO_Code
+USA,United States,United States of America,40,44,42,126,USA
+CHN,China,People's Republic of China,40,27,24,91,CHN
+JPN,Japan,Japan,20,12,13,45,JPN
+AUS,Australia,Australia,18,19,16,53,AUS
+FRA,France,France,16,26,22,64,FRA
+NED,Netherlands,Netherlands,15,7,12,34,NLD
+GBR,Great Britain,Great Britain,14,22,29,65,GBR
+KOR,Korea,Republic of Korea,13,9,10,32,KOR
+ITA,Italy,Italy,12,13,15,40,ITA
+GER,Germany,Germany,12,13,8,33,DEU
+NZL,New Zealand,New Zealand,10,7,3,20,NZL
+CAN,Canada,Canada,9,7,11,27,CAN
+UZB,Uzbekistan,Uzbekistan,8,2,3,13,UZB
+HUN,Hungary,Hungary,6,7,6,19,HUN
+ESP,Spain,Spain,5,4,9,18,ESP
+SWE,Sweden,Sweden,4,4,3,11,SWE
+KEN,Kenya,Kenya,4,2,5,11,KEN
+NOR,Norway,Norway,4,1,3,8,NOR
+IRL,Ireland,Ireland,4,0,3,7,IRL
+BRA,Brazil,Brazil,3,7,10,20,BRA
+IRI,IR Iran,Islamic Republic of Iran,3,6,3,12,IRN
+UKR,Ukraine,Ukraine,3,5,4,12,UKR
+ROU,Romania,Romania,3,4,2,9,ROU
+GEO,Georgia,Georgia,3,3,1,7,GEO
+BEL,Belgium,Belgium,3,1,6,10,BEL
+BUL,Bulgaria,Bulgaria,3,1,3,7,BGR
+SRB,Serbia,Serbia,3,1,1,5,SRB
+CZE,Czechia,Czechia,3,0,2,5,CZE
+DEN,Denmark,Denmark,2,2,5,9,DNK
+AZE,Azerbaijan,Azerbaijan,2,2,3,7,AZE
+CRO,Croatia,Croatia,2,2,3,7,HRV
+CUB,Cuba,Cuba,2,1,6,9,CUB
+BRN,Bahrain,Bahrain,2,1,1,4,BHR
+SLO,Slovenia,Slovenia,2,1,0,3,SVN
+TPE,Chinese Taipei,Chinese Taipei,2,0,5,7,TWN
+AUT,Austria,Austria,2,0,3,5,AUT
+HKG,"Hong Kong, China","Hong Kong, China",2,0,2,4,HKG
+PHI,Philippines,Philippines,2,0,2,4,PHL
+ALG,Algeria,Algeria,2,0,1,3,DZA
+INA,Indonesia,Indonesia,2,0,0,2,IDN
+ISR,Israel,Israel,1,5,1,7,ISR
+POL,Poland,Poland,1,4,5,10,POL
+KAZ,Kazakhstan,Kazakhstan,1,3,3,7,KAZ
+JAM,Jamaica,Jamaica,1,3,2,6,JAM
+RSA,South Africa,South Africa,1,3,2,6,ZAF
+THA,Thailand,Thailand,1,3,2,6,THA
+AIN,AIN,AIN,1,3,1,5,AIN
+ETH,Ethiopia,Ethiopia,1,3,0,4,ETH
+SUI,Switzerland,Switzerland,1,2,5,8,CHE
+ECU,Ecuador,Ecuador,1,2,2,5,ECU
+POR,Portugal,Portugal,1,2,1,4,PRT
+GRE,Greece,Greece,1,1,6,8,GRC
+ARG,Argentina,Argentina,1,1,1,3,ARG
+EGY,Egypt,Egypt,1,1,1,3,EGY
+TUN,Tunisia,Tunisia,1,1,1,3,TUN
+BOT,Botswana,Botswana,1,1,0,2,BWA
+CHI,Chile,Chile,1,1,0,2,CHL
+LCA,Saint Lucia,Saint Lucia,1,1,0,2,LCA
+UGA,Uganda,Uganda,1,1,0,2,UGA
+DOM,Dominican Republic,Dominican Republic,1,0,2,3,DOM
+GUA,Guatemala,Guatemala,1,0,1,2,GTM
+MAR,Morocco,Morocco,1,0,1,2,MAR
+DMA,Dominica,Dominica,1,0,0,1,DMA
+PAK,Pakistan,Pakistan,1,0,0,1,PAK
+TUR,Türkiye,Türkiye,0,3,5,8,TUR
+MEX,Mexico,Mexico,0,3,2,5,MEX
+ARM,Armenia,Armenia,0,3,1,4,ARM
+COL,Colombia,Colombia,0,3,1,4,COL
+PRK,DPR Korea,Democratic People's Republic of Korea,0,2,4,6,PRK
+KGZ,Kyrgyzstan,Kyrgyzstan,0,2,4,6,KGZ
+LTU,Lithuania,Lithuania,0,2,2,4,LTU
+IND,India,India,0,1,5,6,IND
+MDA,Republic of Moldova,Republic of Moldova,0,1,3,4,MDA
+KOS,Kosovo,Kosovo,0,1,1,2,XKX
+CYP,Cyprus,Cyprus,0,1,0,1,CYP
+FIJ,Fiji,Fiji,0,1,0,1,FJI
+JOR,Jordan,Jordan,0,1,0,1,JOR
+MGL,Mongolia,Mongolia,0,1,0,1,MNG
+PAN,Panama,Panama,0,1,0,1,PAN
+TJK,Tajikistan,Tajikistan,0,0,3,3,TJK
+ALB,Albania,Albania,0,0,2,2,ALB
+GRN,Grenada,Grenada,0,0,2,2,GRD
+MAS,Malaysia,Malaysia,0,0,2,2,MYS
+PUR,Puerto Rico,Puerto Rico,0,0,2,2,PRI
+CPV,Cabo Verde,Cabo Verde,0,0,1,1,CPV
+CIV,Côte d'Ivoire,Côte d'Ivoire,0,0,1,1,CIV
+EOR,EOR,Refugee Olympic Team,0,0,1,1,EOR
+PER,Peru,Peru,0,0,1,1,PER
+QAT,Qatar,Qatar,0,0,1,1,QAT
+SGP,Singapore,Singapore,0,0,1,1,SGP
+SVK,Slovakia,Slovakia,0,0,1,1,SVK
+ZAM,Zambia,Zambia,0,0,1,1,ZMB
