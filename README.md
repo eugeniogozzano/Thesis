@@ -11,21 +11,16 @@ The core methodological objective of this research is to bridge structural socio
 
 ```text
 .
-├── Thesis.Rproj                            # R Project file (sets root directory automatically)
 ├── README.md                               # Reproducibility documentation
-├── analysis.qmd                            # Main Quarto document containing the modeling pipeline
+├── R_code                                  # Modular R scripts for data wrangling; population, API pulls, and HDI imputation. Necessary to open the Python_code.
+├── Python_code                             # documents containing the modeling pipeline in Python
 ├── data/                                   # Local static datasets required for execution
 │   ├── P_Data_Extract_From_World_Development_Indicators.xlsx
 │   ├── Countries GDP 1960-2020.csv
 │   ├── WPP2024_PopulationByAge5GroupSex_Percentage_Medium.csv
 │   ├── Tokyo_Medals_2021_with_ISO.csv
 │   └── Medals_2024_with_ISO.csv
-├── scripts/                                # Modular R scripts for data wrangling
-│   ├── 01_data_preparation.R               # Base GDP and historical Olympics ingestion
-│   └── 02_feature_engineering.R            # Population, API pulls, and HDI imputation
-└── output/                                 # Rendered deliverables and finalized data
-    ├── dataset_thesis_final.csv            # Cleaned compilation dataset (1992–2024)
-    └── Forecasting_Olympic_Medals.pdf      # The final rendered thesis document
+└── Thesis_Eugenio_Gozzano                   # Final Thesis
 ```
 
 ## Automated Data Pipeline & Orchestration
