@@ -1,4 +1,4 @@
-[readme_md.md](https://github.com/user-attachments/files/34477316/readme_md.md)
+
 # Forecasting Olympic Medal Counts: Interpretability vs. Accuracy
 **Master of Science Thesis Repository — Statistics & Data Science (Leiden University)**
 
