@@ -28,7 +28,7 @@ The core methodological objective of this research is to bridge structural socio
     └── Forecasting_Olympic_Medals.pdf      # The final rendered thesis document
 ```
 
-## 🔄Automated Data Pipeline & Orchestration
+## Automated Data Pipeline & Orchestration
 
 The data ingestion workflow employs a hybrid architecture, combining local static files with dynamic API calls to maximize auditability:
 
