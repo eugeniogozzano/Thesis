@@ -46,7 +46,7 @@ df_pop <- df_filtered_92 %>%
 
 #################################################################################
 
-prime_age <- read.csv(here("data", "WPP2024_PopulationByAge5GroupSex_Percentage_Medium.csv"))
+prime_age <- read.csv(here("data", "WPP2024_PopulationByAge5GroupSex_Percentage_Medium.csv.gz"))
 prime_age_92 =  prime_age |> 
   select(-c( LocID, Location, Variant, VarID, Notes, SDMX_code)) |> 
   filter(Time >= 1992) 
