@@ -1,11 +1,16 @@
 library(readxl)
 library(tidyverse)
+library(countrycode)
+library(jsonlite)  
+library(here)
+library(dplyr)
+library(countrycode)
 
 #MERGING THE TWO DATASETS RELATED TO GDPs; ONE WITH HISTORICAL DATA THE OTHER WITH RECENT GDPs
 
 ###########################_______UPLOADING DATASETS___________################################
-df1 = read_xlsx("/Users/Eugenio/Desktop/THESIS/THESIS_R/P_Data_Extract_From_World_Development_Indicators.xlsx")
-df2 = read.csv("/Users/Eugenio/Desktop/THESIS/THESIS_R/Countries GDP 1960-2020.csv")
+df1 <- read_xlsx(here("data", "P_Data_Extract_From_World_Development_Indicators.xlsx"))
+df2 <- read.csv(here("data", "Countries GDP 1960-2020.csv"))
 
 ###########################___MERGING THEM TOGETHER______################################
 df1_long <- df1 %>%
@@ -101,6 +106,8 @@ if (nrow(code_mismatches) > 0) {
 
 write.csv(merged_join, "merged_gdp_data_historical_recent.csv", row.names = FALSE)
 
+#####_______PULLING HDI/GDI DATA FROM WEB_________#########
+
 df3_bis <- read.csv("https://ourworldindata.org/grapher/inequality-adjusted-human-development-index.csv?v=1&csvType=full&useColumnShortNames=true")
 
 metadata_ihdi <- fromJSON("https://ourworldindata.org/grapher/inequality-adjusted-human-development-index.metadata.json?v=1&csvType=full&useColumnShortNames=true")
@@ -110,7 +117,6 @@ df4 <- read.csv("https://ourworldindata.org/grapher/gender-development-index.csv
 
 metadata_gdi <- fromJSON("https://ourworldindata.org/grapher/gender-development-index.metadata.json?v=1&csvType=full&useColumnShortNames=true")
 
-merged_join = read.csv("/Users/Eugenio/Desktop/THESIS/THESIS_R/merged_gdp_data_historical_recent.csv")
 
 ###########################___PREP TO MERGING THEM WITH MERGED_JOIN________###########################
 
@@ -197,7 +203,6 @@ if (length(gdi_missing) > 0) {
 
 ###########################_____SAVING DATASET_______######################################
 write.csv(final_merged_gdp_hdi_gdi, "final_merged_data_gdp_ihdi_gdi.csv", row.names = FALSE)
-library(tidyverse)
 
 
 
@@ -214,10 +219,8 @@ medal_counts <- olympics %>%
     .groups = 'drop'
   )
 
-library(dplyr)
-library(countrycode)
 
-# --- STEP 1: Map Country Codes (Run this ONCE) ---
+# --- STEP 1: Map Country Codes ---
 # We combine your custom matches into a single command.
 medal_counts$iso_code_mapped <- countrycode(
   sourcevar = medal_counts$noc,
@@ -228,14 +231,14 @@ medal_counts$iso_code_mapped <- countrycode(
     "KOS" = "XKX",  # Fix Kosovo
     "TPE" = "TWN",  # Taiwan
     "SGP" = "SGP",   # Singapore
-     "FRG" = "DEU" # Uncomment this if you WANT to map West Germany to Germany
+     "FRG" = "DEU" 
   )
 )
 # 1. Data Incompatibility: Historical entities like the Soviet Union (URS) and East Germany (GDR) do not have current economic data (GDP), so keeping them would force the model to analyze countries with "0 GDP" but high medal counts, which would severely distort the correlation between wealth and athletic success.
 # 
 # 2. Predictive Accuracy: For predicting the 2028 Olympics, it is statistically more accurate to rely on the consistent 30-year dataset (1996–2024) of modern nations like Russia and Germany rather than including dissolved empires whose borders, populations, and sports infrastructure no longer exist.
 
-# --- STEP 2: Filter out Historical/Unmatched (Option 1) ---
+# --- STEP 2: Filter out Historical/Unmatched  ---
 # This removes Soviet Union (URS), East Germany (GDR), etc.
 medal_counts_clean <- medal_counts %>%
   filter(!is.na(iso_code_mapped))
@@ -243,7 +246,7 @@ medal_counts_clean <- medal_counts %>%
 # --- STEP 3: Aggregate by ISO Code and Year ---
 # This sums up the medals to ensure 1 row per Country-Year
 medal_counts_aggregated <- medal_counts_clean %>%
-  group_by(iso_code_mapped, year) %>%  # Note: 'year' is lowercase in your medal_counts
+  group_by(iso_code_mapped, year) %>%  
   summarise(
     Gold = sum(Gold, na.rm = TRUE),
     Silver = sum(Silver, na.rm = TRUE),
@@ -261,7 +264,7 @@ dataset_after_medals <- full_join(
   by = c("iso_code_mapped" = "Country.Code", "year" = "Year") 
 )
 
-# --- STEP 5: Clean Up NAs (Optional but Recommended) ---
+# --- STEP 5: Clean Up NAs ---
 # If a country has GDP but no medals (e.g., 2009), specific medal counts should be 0, not NA.
 dataset_after_medals <- dataset_after_medals %>%
   mutate(
@@ -272,12 +275,9 @@ dataset_after_medals <- dataset_after_medals %>%
   )
 
 write.csv(dataset_after_medals, "dataset_after_medals_jan.csv", row.names = FALSE)
-library(tidyverse)
-library(countrycode)
-library(dplyr)
 
-# 1. Load Data
-olympics <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-07-27/olympics.csv")
+
+
 
 # 2. THE FIX: Deduplicate Events
 # We keep only UNIQUE combinations of (Year, Event, Medal, Country).
@@ -328,7 +328,7 @@ medal_counts_aggregated <- medal_counts_clean %>%
   )
 
 # ---------------------------------------------------------
-# NEW STEP: Feature Engineering (Adding the Thesis Variables)
+# NEW STEP: Feature Engineering 
 # ---------------------------------------------------------
 
 # A. Create Weighted Medal Score (Gold=3, Silver=2, Bronze=1)
@@ -394,8 +394,6 @@ write.csv(dataset_final, "dataset_thesis_corrected_v2.csv", row.names = FALSE)
 
 #THINGS:
 #issue about winter/summer: in many years they were held in the same year and this might create problems 
-library(tidyverse)
-library(dplyr)
 dataset = read.csv("dataset_thesis_corrected_v2.csv")
 
 #MERGING THE TWO COLUMNS OF GDPS together 
